@@ -1,9 +1,9 @@
 // Variables
 
 // Connection
-var host = "10.1.1.33";
+var host = "172.16.101.32";
 var port = "50000";
-var pass = "stage";
+var pass = "stagepw123";
 
 // Settings
 var stageScreen = 1;
