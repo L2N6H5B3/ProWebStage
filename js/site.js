@@ -15,6 +15,9 @@ var stageScreenList;
 var stageLayoutList;
 var stageScreenUid;
 var stageLayoutUid;
+var time24Hr;
+var timeFormat;
+var dateFormat;
 
 // End Variables
 
@@ -60,12 +63,7 @@ function onMessage(evt) {
     } else if (obj.acn == "fv") {
         // Set current stage frame values
         setFrameValues(obj);
-    } else if (obj.acn == "sys") {
-        convertTimestamp(obj.txt);
-    } else if (obj.acn == "msg") {
-        // Set frame value
-        setFrameValue(obj);
-    } else if (obj.acn == "vid") {
+    } else if (obj.acn == "sys" || obj.acn == "msg" || obj.acn == "vid" || obj.acn == "tmr") {
         // Set frame value
         setFrameValue(obj);
     }
@@ -184,18 +182,18 @@ function setFrameValues(obj) {
                     console.log("Unable to find Frame: "+value.acn)
                 }
             } else {
-                if (document.getElementById(value.acn) != null) {
-                    console.log("Setting Frame: "+value.acn)
-                    document.getElementById("txt."+value.acn).innerHTML = value.txt.replace(/[\r\n\x0B\x0C\u0085\u2028\u2029]+/g, "\n");
+                if (document.getElementById(value.acn+"."+value.uid) != null) {
+                    console.log("Setting Timer Frame: "+value.acn+"."+value.uid)
+                    document.getElementById("txt."+value.acn+"."+value.uid).innerHTML = value.txt.replace(/[\r\n\x0B\x0C\u0085\u2028\u2029]+/g, "\n");
                 } else {
-                    console.log("Unable to find Frame: "+value.acn)
+                    console.log("Unable to find Timer Frame: "+value.acn+"."+value.uid)
                 }
             }
 
         }
     );
     // Fit the values to the frame
-    textFit(document.getElementsByClassName('content-container'));
+    textFit(document.getElementsByClassName('content-container'), {minFontSize:10, maxFontSize: 1000});
 }
 
 function setFrameValue(obj) {
@@ -208,6 +206,16 @@ function setFrameValue(obj) {
                 document.getElementById("txt."+obj.acn).innerHTML = "--:--:--";
             } else {
                 document.getElementById("txt."+obj.acn).innerHTML = obj.txt.replace(/[\r\n\x0B\x0C\u0085\u2028\u2029]+/g, "\n");
+            }
+            break;
+        case "sys":
+            if (document.getElementById("txt."+obj.acn) != null) {
+                document.getElementById("txt."+obj.acn).innerHTML = convertTimestamp(obj.txt);
+            }
+            break;
+        case "tmr":
+            if (document.getElementById("txt.tmr."+obj.uid) != null) {
+                document.getElementById("txt.tmr."+obj.uid).innerHTML = obj.txt.replace(/[\r\n\x0B\x0C\u0085\u2028\u2029]+/g, "\n");
             }
             break;
     }
@@ -229,6 +237,14 @@ function displayStageLayout(uid) {
                 }
                 layout.fme.forEach(
                     function (frame) {
+                        if (frame.typ == 6) {
+                            // Set 12/24hr time
+                            time24Hr = frame.cf24;
+                            // Set time format
+                            timeFormat = frame.cfT;
+                            // Set date format
+                            dateFormat = frame.cfD;
+                        }
                         stageData += '<div style="'+getFrameStyle(frame)+'" id="'+getFrameType(frame.typ, frame.uid)+'" class="stage-frame '+bordered+'">'
 				            + '<div id="nme.'+getFrameType(frame.typ, frame.uid)+'" class="title">'+getFrameName(frame.nme, frame.typ)+'</div>'
             				+ '<div class="content-container"><div id="txt.'+getFrameType(frame.typ, frame.uid)+'" class="content"></div></div>'
@@ -322,8 +338,7 @@ function getFrameStyle(frame) {
 }
 
 function convertTimestamp(timestamp) {
-    // Create a new JavaScript Date object based on the timestamp
-    // multiplied by 1000 so that the argument is in milliseconds, not seconds.
+    // Create date object based on the timestamp
     var date = new Date(timestamp * 1000);
     // Hours part from the timestamp
     var hours = date.getHours();
@@ -331,16 +346,55 @@ function convertTimestamp(timestamp) {
     var minutes = "0" + date.getMinutes();
     // Seconds part from the timestamp
     var seconds = "0" + date.getSeconds();
-
-    // Will display time in 10:30:23 format
-    // var formattedTime = hours + ':' + minutes.substr(-2) + ':' + seconds.substr(-2);
-    var formattedTime = hours + ':' + minutes.substr(-2);
+    // Create variable to hold formatted time
+    var formattedTime = "";
+    // Check the time format
+    switch (timeFormat) {
+        case 1:
+            // Check if time is 24hr
+            if (time24Hr) {
+                formattedTime = hours + ':' + minutes.substr(-2);
+            } else {
+                converted = convertTo12Hr(date);
+                formattedTime = converted[0] + ':' + minutes.substr(-2) + " " + converted[1];
+            }
+            break;
+        default:
+            // Check if time is 24hr
+            if (time24Hr) {
+                formattedTime = hours + ':' + minutes.substr(-2) + ':' + seconds.substr(-2);
+            } else {
+                converted = convertTo12Hr(date);
+                formattedTime = converted[0] + ':' + minutes.substr(-2) + ':' + seconds.substr(-2) + " " + converted[1];
+            }
+            break;
+    }
 
     return formattedTime;
 }
 
+function convertTo12Hr(date) {
+    // Hours part from the timestamp
+    var hours = date.getHours();
+    // Minutes part from the timestamp
+    var minutes = "0" + date.getMinutes();
+    // Set the ampm variable
+    var timeType = "AM";
+    // If the hours is greater than 11
+    if (hours > 11) {
+        // Set PM
+        timeType = "PM";
+    }
+    // If the hours is greater than 12
+	if (hours > 12) {
+        // Subtract 12 from hours
+		hours = hours - 12;
+	}
+	return [hours, timeType];
+}
+
 function getRGBValue(int) {
-    return 255 * int;
+    return Math.round(255 * int);
 }
 
 function getClockSmallFormat(obj) {
