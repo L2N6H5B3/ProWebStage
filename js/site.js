@@ -54,6 +54,7 @@ function onOpen(evt) {
 
 function onMessage(evt) {
     var obj = JSON.parse(evt.data);
+    console.log("Message: "+evt.data);
     if (obj.acn == "ath" && obj.ath && authenticated == false) {
         // Set as authenticated
         authenticated = true;
@@ -103,43 +104,6 @@ function onClose(evt) {
 }
 
 //  End Web Socket Functions
-
-
-// Cookie Functions
-
-function setCookie(cname, cvalue, exdays) {
-  var d = new Date();
-  d.setTime(d.getTime() + (exdays*24*60*60*1000));
-  var expires = "expires="+ d.toUTCString();
-  document.cookie = cname + "=" + cvalue + ";" + expires + ";path=/";
-}
-
-function getCookie(cname) {
-  var name = cname + "=";
-  var decodedCookie = decodeURIComponent(document.cookie);
-  var ca = decodedCookie.split(';');
-  for(var i = 0; i <ca.length; i++) {
-    var c = ca[i];
-    while (c.charAt(0) == ' ') {
-      c = c.substring(1);
-    }
-    if (c.indexOf(name) == 0) {
-      return c.substring(name.length, c.length);
-    }
-  }
-  return "";
-}
-
-function checkCookie(cname) {
-    var name = getCookie(cname);
-    if (name != "") {
-        return true;
-    } else {
-        return false;
-    }
-}
-
-// End Cookie Functions
 
 
 // Stage Display Functions
@@ -474,6 +438,7 @@ function initialise() {
 // When document is ready
 $(document).ready(function() {
     initialise();
+    // If user must authenticate
     if (mustAuthenticate) {
         if (changeHost) {
             $(".host-container").show();
