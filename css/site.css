@@ -73,6 +73,10 @@ body {
     height: calc(100% - 16px);
 }
 
+.stage-frame .content-container span {
+    vertical-align: super;
+}
+
 .stage-frame .content {
     white-space: pre-line;
     display: inline-block;
