@@ -1,9 +1,9 @@
 // Variables
 
 // Connection
-var host = "172.16.101.32";
+var host = "10.1.1.33";
 var port = "50000";
-var pass = "stagepw123";
+var pass = "stage";
 
 // Settings
 var stageScreen = 1;
@@ -43,6 +43,8 @@ function onMessage(evt) {
     if (obj.acn == "ath" && obj.ath && authenticated == false) {
         // Set as authenticated
         authenticated = true;
+        // Set loading data status
+        $("#connecting-to").text("Loading Data");
         // Remove disconnected status
         $(".disconnected").hide();
         // Show connected status
@@ -60,6 +62,12 @@ function onMessage(evt) {
         setFrameValues(obj);
     } else if (obj.acn == "sys") {
         convertTimestamp(obj.txt);
+    } else if (obj.acn == "msg") {
+        // Set frame value
+        setFrameValue(obj);
+    } else if (obj.acn == "vid") {
+        // Set frame value
+        setFrameValue(obj);
     }
 }
 
@@ -163,6 +171,12 @@ function setFrameValues(obj) {
                     console.log("Setting Frame: "+value.acn)
                     if (value.acn == "sys") {
                         document.getElementById("txt."+value.acn).innerHTML = convertTimestamp(value.txt);
+                    } else if (value.acn == "vid") {
+                        if (value.txt == "-00:00:00") {
+                            document.getElementById("txt."+value.acn).innerHTML = "--:--:--";
+                        } else {
+                            document.getElementById("txt."+value.acn).innerHTML = value.txt.replace(/[\r\n\x0B\x0C\u0085\u2028\u2029]+/g, "\n");
+                        }
                     } else {
                         document.getElementById("txt."+value.acn).innerHTML = value.txt.replace(/[\r\n\x0B\x0C\u0085\u2028\u2029]+/g, "\n");
                     }
@@ -180,6 +194,23 @@ function setFrameValues(obj) {
 
         }
     );
+    // Fit the values to the frame
+    textFit(document.getElementsByClassName('content-container'));
+}
+
+function setFrameValue(obj) {
+    switch (obj.acn) {
+        case "msg":
+            document.getElementById("txt."+obj.acn).innerHTML = obj.txt.replace(/[\r\n\x0B\x0C\u0085\u2028\u2029]+/g, "\n");
+            break;
+        case "vid":
+            if (obj.txt == "-00:00:00") {
+                document.getElementById("txt."+obj.acn).innerHTML = "--:--:--";
+            } else {
+                document.getElementById("txt."+obj.acn).innerHTML = obj.txt.replace(/[\r\n\x0B\x0C\u0085\u2028\u2029]+/g, "\n");
+            }
+            break;
+    }
 }
 
 function displayStageLayout(uid) {
@@ -200,7 +231,7 @@ function displayStageLayout(uid) {
                     function (frame) {
                         stageData += '<div style="'+getFrameStyle(frame)+'" id="'+getFrameType(frame.typ, frame.uid)+'" class="stage-frame '+bordered+'">'
 				            + '<div id="nme.'+getFrameType(frame.typ, frame.uid)+'" class="title">'+getFrameName(frame.nme, frame.typ)+'</div>'
-            				+ '<div id="txt.'+getFrameType(frame.typ, frame.uid)+'" class="content"></div>'
+            				+ '<div class="content-container"><div id="txt.'+getFrameType(frame.typ, frame.uid)+'" class="content"></div></div>'
 	                        + '</div>';
                     }
                 );
@@ -208,8 +239,12 @@ function displayStageLayout(uid) {
             }
         }
     );
+    // Add the stage data to the main area
     document.getElementById("main-area").innerHTML = stageData;
+    // Get the frame values
     getFrameValues();
+    // Fade out loading screen
+    setTimeout(function(){$(".loading").fadeOut()}, 2000);
 }
 
 // End Stage Display Functions
@@ -228,7 +263,7 @@ function getFrameType(type, uid) {
         case 4:
             return "nsn";
         case 5:
-            return "sm";
+            return "msg";
         case 6:
             return "sys";
         case 7:
@@ -321,6 +356,11 @@ function getClockSmallFormat(obj) {
 
 // Initialisation Functions
 function initialise() {
+
+    // Display connecting to host text
+    $("#connecting-to").text("Connecting to "+host);
+    // Fade-in the loader and text
+    $("#connecting-loader").fadeIn();
 
     // Make images non-draggable
     $("img").attr('draggable', false);

@@ -1,44 +1,76 @@
 <!DOCTYPE HTML>
 <head>
+	<!-- Set UTF-8 Character Set -->
+	<meta charset="utf-8" />
+	<!-- Set Not-User Scalable -->
+	<meta name="viewport" content="width=device-width, user-scalable=no">
+	<!-- Set Web App Capable -->
+	<meta name="mobile-web-app-capable" content="yes">
+	<meta name="apple-mobile-web-app-capable" content="yes">
+	<!-- Set App Name -->
+	<meta name="application-name" content="ProRemote">
+	<meta name="apple-mobile-web-app-title" content="ProRemote">
+	<!-- Set Theme Colour -->
+	<meta name="theme-color" content="#000000">
+	<meta name="msapplication-navbutton-color" content="#000000">
+	<meta name="apple-mobile-web-app-status-bar-style" content="black">
+	<!-- Set App Start Path-->
+	<meta name="msapplication-starturl" content="/">
+
+	<!-- Set App Manifest -->
+	<link rel="manifest" href="img/site.webmanifest">
+	<!-- Set App Icons -->
+	<link rel="icon" type="image/png" sizes="192x192" href="img/android-chrome-192x192.png">
+	<link rel="apple-touch-icon" type="image/png" sizes="192x192" href="img/android-chrome-192x192.png">
+	<link rel="icon" type="image/png" sizes="512x512" href="img/android-chrome-512x512.png">
+	<link rel="apple-touch-icon" type="image/png" sizes="512x512" href="img/android-chrome-512x512.png">
+	<link rel="icon" type="image/png" sizes="180x180" href="img/apple-touch-icon.png">
+	<link rel="apple-touch-icon" type="image/png" sizes="180x180" href="img/apple-touch-icon.png">
+
+	<!-- Load Font Awesome -->
+	<link rel="stylesheet" href="fa/css/all.css">
 	<!-- Load Roboto Font -->
 	<link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,400;0,500;0,700;0,900;1,400;1,500;1,700;1,900&display=swap" rel="stylesheet">
 	<!-- Load Site CSS -->
 	<link rel="stylesheet" href="css/site.css?v=1.0">
 	<!-- Load JQuery -->
 	<script type="application/javascript" src="js/jquery-3.5.1.min.js"></script>
+	<!-- Load TextFit -->
+	<script type="application/javascript" src="js/textFit.min.js"></script>
 	<!-- Load Site JS -->
 	<script type="application/javascript" src="js/site.js?v=1.0"></script>
 
-	<link rel="apple-touch-icon" sizes="180x180" href="img/apple-touch-icon.png">
-	<link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32x32.png">
-	<link rel="icon" type="image/png" sizes="16x16" href="img/favicon-16x16.png">
-	<link rel="manifest" href="img/site.webmanifest">
 
 	<title>ProPresenter Web Stage</title>
 </head>
 <body>
+	<div class="loading">
+		<div class="loading-internal animated animatedFadeInUp fadeInUp">
+			<div class="loading-img">
+				<img src="img/logo.png">
+				<div id="connecting-loader" class="connecting-loader">
+					<div class="connecting-spinner"><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div></div>
+					<div class="connecting-to" id="connecting-to"></div>
+				</div>
+			</div>
+		</div>
+	</div>
 	<div class="container">
 		<div id="main-area" class="main">
-			<div class="stage-frame">
-				<div class="title">Next Slide</div>
-				<div class="content">Voices that sing for Your glory <br/>And lives that bring honour to you</div>
-			</div>
+		</div>
+		<div id="live-img">
 
-			<div class="stage-frame bordered">
-				<div class="title">Next Slide</div>
-				<div class="content">Voices that sing for Your glory <br/>And lives that bring honour to you</div>
-			</div>
 		</div>
 		<div class="footer">
 			<div class="status">
+				<div class="connected">
+					<div class="text connected">Connected <i class="fas fa-check-circle"></i></div>
+				</div>
 				<div class="disconnected">
 					<div class="text disconnected">Connecting</div>
 					<div class="loader">
 						<div class="lds-spinner"><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div></div>
 					</div>
-				</div>
-				<div class="connected">
-					<div class="text connected">Connected</div>
 				</div>
 			</div>
 		</div>
