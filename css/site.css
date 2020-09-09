@@ -110,6 +110,7 @@ body {
 .stage-frame .content-container {
     width: 100%;
     height: calc(100% - 16px);
+    background-color: #000;
 }
 
 .stage-frame .content-container span {

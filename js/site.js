@@ -253,6 +253,8 @@ function setFrameValue(obj) {
             }
             break;
     }
+    // Fit the values to the frame
+    textFit(document.getElementsByClassName('content-container'), {minFontSize:10, maxFontSize: 1000});
 }
 
 function displayStageLayout(uid) {
@@ -478,11 +480,20 @@ $(document).ready(function() {
         }
         document.getElementById("host").value = host;
         document.getElementById("password").value = pass;
-        document.getElementById("password").addEventListener('keypress', function (e) {
-            if (e.key === 'Enter') {
-              authenticate();
+        document.getElementById("host").addEventListener('keypress',
+            function (e) {
+                if (e.key === 'Enter') {
+                    authenticate();
+                }
             }
-        });
+        );
+        document.getElementById("password").addEventListener('keypress',
+            function (e) {
+                if (e.key === 'Enter') {
+                    authenticate();
+                }
+            }
+        );
         $("#authenticate").show();
     } else {
         connect();
