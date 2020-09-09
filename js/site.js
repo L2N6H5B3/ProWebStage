@@ -1,16 +1,18 @@
 // Variables
 
 // Connection
-var host = "10.1.1.33";
+var host = "172.16.101.32";
 var port = "50000";
 var pass = "stage";
 
 // Settings
 var stageScreen = 1;
+var mustAuthenticate = true;
+var changeHost = true;
 
 // Application
 var authenticated = false;
-var wsUri = "ws://"+host+":"+port;
+var wsUri;
 var stageScreenList;
 var stageLayoutList;
 var stageScreenUid;
@@ -24,8 +26,19 @@ var dateFormat;
 // WebSocket Functions
 
 function connect() {
+    // Hide authenticate segment
+    $("#authenticate").hide();
+    // Display connecting to host text
+    $("#connecting-to").text("Connecting to "+host);
+    // Fade-in the loader and text
+    $("#connecting-loader").fadeIn();
+    // Show disconnected status
     $(".disconnected").show();
+    // Set WebSocket uri
+    wsUri = "ws://"+host+":"+port;
+    // Create WebSocket
     webSocket = new WebSocket(wsUri+"/stagedisplay");
+    // Define WebSocket actions
     webSocket.onopen = function(evt) { onOpen(evt) };
     webSocket.onclose = function(evt) { onClose(evt) };
     webSocket.onmessage = function(evt) { onMessage(evt) };
@@ -34,15 +47,13 @@ function connect() {
 
 function onOpen(evt) {
     if (!authenticated) {
+        // Send authentication data
         webSocket.send('{"acn":"ath","ptl":610,"pwd":"'+pass+'"}');
-        console.log('Connected');
     }
 }
 
 function onMessage(evt) {
     var obj = JSON.parse(evt.data);
-    console.log("Message: "+evt.data);
-
     if (obj.acn == "ath" && obj.ath && authenticated == false) {
         // Set as authenticated
         authenticated = true;
@@ -70,12 +81,16 @@ function onMessage(evt) {
 }
 
 function onError(evt) {
+    // Set authenticated to false
     authenticated = false;
+    // Log the error to console
     console.error('Socket encountered error: ', evt.message, 'Closing socket');
+    // Close the WebSocket
     webSocket.close();
 }
 
 function onClose(evt) {
+    // Set authenticated to false
     authenticated = false;
     // Remove connected status
     $(".connected").hide();
@@ -158,35 +173,45 @@ function setStageLayouts(obj) {
 }
 
 function getFrameValues() {
+    // Send the request to ProPresenter
     webSocket.send('{"acn":"fv","uid":"'+stageLayoutUid+'"}');
 }
 
 function setFrameValues(obj) {
+    // Iterate through each frame value
     obj.ary.forEach(
         function (value) {
+            // Check if the frame is not a timer
             if (value.acn != "tmr") {
+                // If the frame exists
                 if (document.getElementById(value.acn) != null) {
-                    console.log("Setting Frame: "+value.acn)
+                    // If this frame is the clock
                     if (value.acn == "sys") {
+                        // Set the frame value
                         document.getElementById("txt."+value.acn).innerHTML = convertTimestamp(value.txt);
-                    } else if (value.acn == "vid") {
+                    }
+                    // If this frame is the video
+                    else if (value.acn == "vid") {
+                        // Check if the countdown is finished
                         if (value.txt == "-00:00:00") {
+                            // Set the frame value
                             document.getElementById("txt."+value.acn).innerHTML = "--:--:--";
                         } else {
+                            // Set the frame value
                             document.getElementById("txt."+value.acn).innerHTML = value.txt.replace(/[\r\n\x0B\x0C\u0085\u2028\u2029]+/g, "\n");
                         }
-                    } else {
+                    }
+                    // If this frame is any other frame
+                    else {
+                        // Set the frame value
                         document.getElementById("txt."+value.acn).innerHTML = value.txt.replace(/[\r\n\x0B\x0C\u0085\u2028\u2029]+/g, "\n");
                     }
-                } else {
-                    console.log("Unable to find Frame: "+value.acn)
                 }
             } else {
+                // If the timer frame exists
                 if (document.getElementById(value.acn+"."+value.uid) != null) {
-                    console.log("Setting Timer Frame: "+value.acn+"."+value.uid)
+                    // Set the frame value
                     document.getElementById("txt."+value.acn+"."+value.uid).innerHTML = value.txt.replace(/[\r\n\x0B\x0C\u0085\u2028\u2029]+/g, "\n");
-                } else {
-                    console.log("Unable to find Timer Frame: "+value.acn+"."+value.uid)
                 }
             }
 
@@ -197,24 +222,33 @@ function setFrameValues(obj) {
 }
 
 function setFrameValue(obj) {
+    // Check which frame type this is
     switch (obj.acn) {
         case "msg":
+            // Set the frame value
             document.getElementById("txt."+obj.acn).innerHTML = obj.txt.replace(/[\r\n\x0B\x0C\u0085\u2028\u2029]+/g, "\n");
             break;
         case "vid":
+            // If the countdown is finished
             if (obj.txt == "-00:00:00") {
+                // Set the frame value
                 document.getElementById("txt."+obj.acn).innerHTML = "--:--:--";
             } else {
+                // Set the frame value
                 document.getElementById("txt."+obj.acn).innerHTML = obj.txt.replace(/[\r\n\x0B\x0C\u0085\u2028\u2029]+/g, "\n");
             }
             break;
         case "sys":
+            // If the clock frame exists
             if (document.getElementById("txt."+obj.acn) != null) {
+                // Set the frame value
                 document.getElementById("txt."+obj.acn).innerHTML = convertTimestamp(obj.txt);
             }
             break;
         case "tmr":
+            // If the timer frame exists
             if (document.getElementById("txt.tmr."+obj.uid) != null) {
+                // Set the frame value
                 document.getElementById("txt.tmr."+obj.uid).innerHTML = obj.txt.replace(/[\r\n\x0B\x0C\u0085\u2028\u2029]+/g, "\n");
             }
             break;
@@ -222,6 +256,7 @@ function setFrameValue(obj) {
 }
 
 function displayStageLayout(uid) {
+    // Create variable to hold stage data
     stageData = "";
     // Iterate through the stage layout list
     stageLayoutList.forEach(
@@ -235,6 +270,7 @@ function displayStageLayout(uid) {
                     // Enable borders
                     bordered = "bordered";
                 }
+                // Iterate through each layout frame
                 layout.fme.forEach(
                     function (frame) {
                         if (frame.typ == 6) {
@@ -245,6 +281,7 @@ function displayStageLayout(uid) {
                             // Set date format
                             dateFormat = frame.cfD;
                         }
+                        // Add the frame to stage data
                         stageData += '<div style="'+getFrameStyle(frame)+'" id="'+getFrameType(frame.typ, frame.uid)+'" class="stage-frame '+bordered+'">'
 				            + '<div id="nme.'+getFrameType(frame.typ, frame.uid)+'" class="title">'+getFrameName(frame.nme, frame.typ)+'</div>'
             				+ '<div class="content-container"><div id="txt.'+getFrameType(frame.typ, frame.uid)+'" class="content"></div></div>'
@@ -271,22 +308,31 @@ function displayStageLayout(uid) {
 function getFrameType(type, uid) {
     switch(type) {
         case 1:
+            // Current Slide
             return "cs";
         case 2:
+            // Next Slide
             return "ns";
         case 3:
+            // Current Slide Notes
             return "csn";
         case 4:
+            // Next Slide Notes
             return "nsn";
         case 5:
+            // Stage Message
             return "msg";
         case 6:
+            // Clock
             return "sys";
         case 7:
+            // Timer
             return "tmr."+uid;
         case 8:
+            // Video Countdown
             return "vid";
         case 9:
+            // Chord charAt
             return "chd";
     }
 }
@@ -319,7 +365,9 @@ function getFrameName(name, type) {
 }
 
 function getFrameStyle(frame) {
+    // Get the frame dimentions
     var ufrList = frame.ufr.replace(/[{}]/g, "").split(",");
+    // Create variable to hold the frame style
     var frameStyle = 'left: '+(ufrList[0]*100)+'%;'
         + 'bottom: '+(ufrList[1]*100)+'%;'
         + 'width: calc('+(ufrList[2]*100)+'% - 2px);'
@@ -397,24 +445,24 @@ function getRGBValue(int) {
     return Math.round(255 * int);
 }
 
-function getClockSmallFormat(obj) {
-    if (obj.length > 6) {
-        return obj.split(".")[0];
-    } else {
-        return obj;
-    }
-}
-
 // End Utility Functions
 
 
 // Initialisation Functions
-function initialise() {
 
-    // Display connecting to host text
-    $("#connecting-to").text("Connecting to "+host);
+function authenticate() {
+    host = document.getElementById("host").value;
+    pass = document.getElementById("password").value;
+    connect();
+}
+
+function cancelAuthenticate() {
     // Fade-in the loader and text
-    $("#connecting-loader").fadeIn();
+    $("#connecting-loader").hide();
+    $("#authenticate").fadeIn("200");
+}
+
+function initialise() {
 
     // Make images non-draggable
     $("img").attr('draggable', false);
@@ -424,7 +472,21 @@ function initialise() {
 // When document is ready
 $(document).ready(function() {
     initialise();
-    connect();
+    if (mustAuthenticate) {
+        if (changeHost) {
+            $(".host-container").show();
+        }
+        document.getElementById("host").value = host;
+        document.getElementById("password").value = pass;
+        document.getElementById("password").addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+              authenticate();
+            }
+        });
+        $("#authenticate").show();
+    } else {
+        connect();
+    }
 });
 
 // End Initialisation Functions
