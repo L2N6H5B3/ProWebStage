@@ -41,6 +41,10 @@ body {
     transform: translate(-50%, -50%);
 }
 
+.loading-img img {
+    width: 100%;
+}
+
 .host-container {
     display: none;
 }
@@ -368,5 +372,13 @@ body {
     }
     100% {
         opacity: 0;
+    }
+}
+
+@media only screen and (max-width: 580px) {
+    .authenticate label {
+        width: auto;
+        display: block;
+        text-align: center;]
     }
 }
