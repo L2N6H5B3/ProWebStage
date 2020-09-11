@@ -12,6 +12,8 @@ var changeHost = true;
 
 // Application
 var authenticated = false;
+var retryConnection = true;
+var loadingTimeout;
 var wsUri;
 var stageScreenList;
 var stageLayoutList;
@@ -58,6 +60,8 @@ function onMessage(evt) {
     if (obj.acn == "ath" && obj.ath && authenticated == false) {
         // Set as authenticated
         authenticated = true;
+        // Set retry connection to enabled
+        retryConnection = true;
         // Set loading data status
         $("#connecting-to").text("Loading Data");
         // Remove disconnected status
@@ -97,10 +101,13 @@ function onClose(evt) {
     $(".connected").hide();
     // Show disconnected status
     $(".disconnected").show();
-    // Retry connection every second
-    setTimeout(function() {
-      connect();
-    }, 1000);
+    // If retry connection is enabled
+    if (retryConnection) {
+        // Retry connection every second
+        setTimeout(function() {
+            connect();
+        }, 1000);
+    }
 }
 
 //  End Web Socket Functions
@@ -263,7 +270,7 @@ function displayStageLayout(uid) {
     // Get the frame values
     getFrameValues();
     // Fade out loading screen
-    setTimeout(function(){$(".loading").fadeOut()}, 2000);
+    loadingTimeout = setTimeout(function(){$(".loading").fadeOut()}, 2000);
 }
 
 // End Stage Display Functions
@@ -417,14 +424,24 @@ function getRGBValue(int) {
 // Initialisation Functions
 
 function authenticate() {
+    // Get the host from the input field
     host = document.getElementById("host").value;
+    // Get the host from the input field
     pass = document.getElementById("password").value;
+    // Try connecting
     connect();
 }
 
 function cancelAuthenticate() {
-    // Fade-in the loader and text
+    // Set retry connection to disabled
+    retryConnection = false;
+    // End the WebSocket connection
+    webSocket.close();
+    // Remove the loading timeout
+    clearTimeout(loadingTimeout);
+    // Fade-out the loader and text
     $("#connecting-loader").hide();
+    // Fade-in authenticate segment
     $("#authenticate").fadeIn("200");
 }
 
