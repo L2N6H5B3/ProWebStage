@@ -1,14 +1,17 @@
 // Variables
 
 // Connection
-var host = "172.16.101.32";
+var host = "localhost";
 var port = "50000";
 var pass = "stage";
+var statusPort = "50010";
+var device = "StageDisplay-3";
 
 // Settings
 var stageScreen = 1;
 var mustAuthenticate = true;
 var changeHost = true;
+var useStatus = true;
 
 // Application
 var authenticated = false;
@@ -47,6 +50,18 @@ function connect() {
     webSocket.onerror = function(evt) { onError(evt) };
 }
 
+function connectStatus() {
+    // Set Status WebSocket uri
+    statusWsUri = "ws://"+host+":"+statusPort;
+    // Create Status WebSocket
+    statusWebSocket = new WebSocket(statusWsUri);
+    // Define WebSocket actions
+    statusWebSocket.onopen = function(evt) { onStatusOpen(evt) };
+    statusWebSocket.onclose = function(evt) { onStatusClose(evt) };
+    statusWebSocket.onmessage = function(evt) { onStatusMessage(evt) };
+    statusWebSocket.onerror = function(evt) { onStatusError(evt) };
+}
+
 function onOpen(evt) {
     if (!authenticated) {
         // Send authentication data
@@ -70,6 +85,11 @@ function onMessage(evt) {
         $(".connected").show();
         // Get current stage screens
         getStageScreens();
+        // If StageStatus is enabled
+        if (useStatus && statusWebSocket.readyState === WebSocket.OPEN) {
+            // Send device data to status application
+            statusWebSocket.send("status:StageConnected");
+        }
     } else if (obj.acn == "saa") {
         // Set current stage screens
         setStageScreens(obj);
@@ -95,6 +115,11 @@ function onError(evt) {
 }
 
 function onClose(evt) {
+    // If StageStatus is enabled
+    if (useStatus && statusWebSocket.readyState === WebSocket.OPEN && authenticated) {
+        // Send device data to status application
+        statusWebSocket.send("status:StageDisconnected");
+    }
     // Set authenticated to false
     authenticated = false;
     // Remove connected status
@@ -106,6 +131,44 @@ function onClose(evt) {
         // Retry connection every second
         setTimeout(function() {
             connect();
+        }, 1000);
+    }
+}
+
+// Status WebSocket Functions
+
+function onStatusOpen(evt) {
+    // If StageStatus is enabled
+    if (useStatus) {
+        // Send device data to status application
+        statusWebSocket.send("device:"+device);
+    }
+}
+
+function onStatusMessage(evt) {
+    console.log("Message: "+evt.data);
+    if (evt.data == "status") {
+        if (authenticated) {
+            // Send data
+            statusWebSocket.send("status:StageConnected");
+        } else {
+            // Send data
+            statusWebSocket.send("status:StageDisconnected");
+        }
+    }
+}
+
+function onStatusError(evt) {
+    // Close the Status WebSocket
+    statusWebSocket.close();
+}
+
+function onStatusClose(evt) {
+    // If retry connection is enabled
+    if (retryConnection) {
+        // Retry connection every second
+        setTimeout(function() {
+            connectStatus();
         }, 1000);
     }
 }
@@ -479,6 +542,10 @@ $(document).ready(function() {
         $("#authenticate").show();
     } else {
         connect();
+    }
+
+    if (useStatus) {
+        connectStatus();
     }
 });
 
