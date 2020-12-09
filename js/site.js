@@ -5,7 +5,7 @@ var host = "localhost";
 var port = "50000";
 var pass = "stage";
 var statusPort = "50010";
-var device = "StageDisplay-3";
+var device = "StageDisplay";
 
 // Settings
 var stageScreen = 1;
@@ -51,6 +51,14 @@ function connect() {
 }
 
 function connectStatus() {
+    // Get the HTTP Parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    // Check if the Device Parameter exists
+    if (urlParams.get('deviceName') != null && urlParams.get('deviceName') != "") {
+        // Set the Device Name
+        device = urlParams.get('deviceName');
+    }
+
     // Set Status WebSocket uri
     statusWsUri = "ws://"+host+":"+statusPort;
     // Create Status WebSocket
