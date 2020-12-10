@@ -11,7 +11,8 @@ var device = "StageDisplay";
 var stageScreen = 1;
 var mustAuthenticate = true;
 var changeHost = true;
-var useStatus = true;
+var useWindowHost = false;
+var useStatus = false;
 
 // Application
 var authenticated = false;
@@ -39,8 +40,14 @@ function connect() {
     $("#connecting-loader").fadeIn();
     // Show disconnected status
     $(".disconnected").show();
-    // Set WebSocket uri
-    wsUri = "ws://"+host+":"+port;
+    // If Use Window Host
+    if (useWindowHost) {
+        // Set WebSocket uri
+        wsUri = "ws://"+window.location.hostname+":"+port;
+    } else {
+        // Set WebSocket uri
+        wsUri = "ws://"+host+":"+port;
+    }
     // Create WebSocket
     webSocket = new WebSocket(wsUri+"/stagedisplay");
     // Define WebSocket actions
@@ -58,9 +65,14 @@ function connectStatus() {
         // Set the Device Name
         device = urlParams.get('deviceName');
     }
-
-    // Set Status WebSocket uri
-    statusWsUri = "ws://"+host+":"+statusPort;
+    // If Use Window Host
+    if (useWindowHost) {
+        // Set Status WebSocket uri
+        statusWsUri = "ws://"+window.location.hostname+":"+statusPort;
+    } else {
+        // Set Status WebSocket uri
+        statusWsUri = "ws://"+host+":"+statusPort;
+    }
     // Create Status WebSocket
     statusWebSocket = new WebSocket(statusWsUri);
     // Define WebSocket actions
