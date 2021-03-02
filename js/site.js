@@ -1,24 +1,34 @@
 // Variables
 
 // Connection
-var host = "172.16.101.32";
+var host = "10.1.1.33";
 var port = "50000";
-var pass = "stage";
+var stagePass = "stage";
+var observerPass = "observer";
+
 
 // Settings
 var stageScreen = 1;
 var mustAuthenticate = true;
 var changeHost = true;
+var observerMode = true;
+var overrideFrameMode = false;
 
 // Application
-var authenticated = false;
+var stageAuthenticated = false;
+var observerAuthenticated = false;
 var retryConnection = true;
+var stageWebSocket;
+var observerWebSocket;
 var loadingTimeout;
 var wsUri;
 var stageScreenList;
 var stageLayoutList;
 var stageScreenUid;
 var stageLayoutUid;
+var observerSlides;
+var observerSlideIndex;
+var observerPresentation;
 var time24Hr;
 var timeFormat;
 var dateFormat;
@@ -39,27 +49,31 @@ function connect() {
     // Set WebSocket uri
     wsUri = "ws://"+host+":"+port;
     // Create WebSocket
-    webSocket = new WebSocket(wsUri+"/stagedisplay");
+    stageWebSocket = new WebSocket(wsUri+"/stagedisplay");
     // Define WebSocket actions
-    webSocket.onopen = function(evt) { onOpen(evt) };
-    webSocket.onclose = function(evt) { onClose(evt) };
-    webSocket.onmessage = function(evt) { onMessage(evt) };
-    webSocket.onerror = function(evt) { onError(evt) };
+    stageWebSocket.onopen = function(evt) { onOpen(evt) };
+    stageWebSocket.onclose = function(evt) { onClose(evt) };
+    stageWebSocket.onmessage = function(evt) { onMessage(evt) };
+    stageWebSocket.onerror = function(evt) { onError(evt) };
+    if (observerMode) {
+        // Connect Observer WebSocket
+        observerConnect();
+    }
 }
 
 function onOpen(evt) {
-    if (!authenticated) {
+    if (!stageAuthenticated) {
         // Send authentication data
-        webSocket.send('{"acn":"ath","ptl":610,"pwd":"'+pass+'"}');
+        stageWebSocket.send('{"acn":"ath","ptl":610,"pwd":"'+stagePass+'"}');
     }
 }
 
 function onMessage(evt) {
     var obj = JSON.parse(evt.data);
-    console.log("Message: "+evt.data);
-    if (obj.acn == "ath" && obj.ath && authenticated == false) {
+    console.log(obj);
+    if (obj.acn == "ath" && obj.ath && stageAuthenticated == false) {
         // Set as authenticated
-        authenticated = true;
+        stageAuthenticated = true;
         // Set retry connection to enabled
         retryConnection = true;
         // Set loading data status
@@ -87,16 +101,16 @@ function onMessage(evt) {
 
 function onError(evt) {
     // Set authenticated to false
-    authenticated = false;
+    stageAuthenticated = false;
     // Log the error to console
-    console.error('Socket encountered error: ', evt.message, 'Closing socket');
+    console.error('Stage Socket encountered error: ', evt.message, 'Closing socket');
     // Close the WebSocket
-    webSocket.close();
+    stageWebSocket.close();
 }
 
 function onClose(evt) {
     // Set authenticated to false
-    authenticated = false;
+    stageAuthenticated = false;
     // Remove connected status
     $(".connected").hide();
     // Show disconnected status
@@ -112,12 +126,79 @@ function onClose(evt) {
 
 //  End Web Socket Functions
 
+// Observer WebSocket Functions
+
+function observerConnect() {
+    // Create WebSocket
+    observerWebSocket = new WebSocket(wsUri+"/remote");
+    // Define WebSocket actions
+    observerWebSocket.onopen = function(evt) { observerOnOpen(evt) };
+    observerWebSocket.onclose = function(evt) { observerOnClose(evt) };
+    observerWebSocket.onmessage = function(evt) { observerOnMessage(evt) };
+    observerWebSocket.onerror = function(evt) { observerOnError(evt) };
+}
+
+function observerOnOpen(evt) {
+    if (!observerAuthenticated) {
+        // Send authentication data
+        observerWebSocket.send('{"action":"authenticate","protocol":"701","password":"'+observerPass+'"}');
+    }
+}
+
+function observerOnMessage(evt) {
+    var obj = JSON.parse(evt.data);
+    if (obj.action == "authenticate" && obj.authenticated == "1" && observerAuthenticated == false) {
+        // Set as authenticated
+        observerAuthenticated = true;
+    } else if (obj.action == "presentationCurrent") {
+        // Set frame static images
+        setFrameImages(obj);
+    } else if (obj.action == "presentationSlideIndex") {
+        // Set frame static images
+        setFrameImages(obj);
+        // Get the current presentation images
+        getCurrentImages();
+    } else if (obj.action == "presentationTriggerIndex") {
+        // Set frame static images
+        setFrameImages(obj);
+    } else if (obj.action == "clearAll") {
+        // Clear frame static images
+        clearFrameImages();
+    } else if (obj.action == "clearText") {
+        // Clear frame static images
+        clearFrameImages();
+    }
+}
+
+function observerOnError(evt) {
+    // Set authenticated to false
+    observerAuthenticated = false;
+    // Log the error to console
+    console.error('Observer Socket encountered error: ', evt.message, 'Closing socket');
+    // Close the WebSocket
+    observerWebSocket.close();
+}
+
+function observerOnClose(evt) {
+    // Set observer authenticated to false
+    observerAuthenticated = false;
+    // If retry connection is enabled
+    if (retryConnection) {
+        // Retry connection every second
+        setTimeout(function() {
+            observerConnect();
+        }, 1000);
+    }
+}
+
+// End Observer Web Socket Functions
+
 
 // Stage Display Functions
 
 function getStageScreens() {
     // Send the request to ProPresenter
-    webSocket.send('{"acn":"saa"}');
+    stageWebSocket.send('{"acn":"saa"}');
 }
 
 function setStageScreens(obj) {
@@ -133,7 +214,7 @@ function setStageScreens(obj) {
 
 function getStageLayouts() {
     // Send the request to ProPresenter
-    webSocket.send('{"acn":"asl"}');
+    stageWebSocket.send('{"acn":"asl"}');
 }
 
 function setStageLayouts(obj) {
@@ -145,10 +226,14 @@ function setStageLayouts(obj) {
 
 function getFrameValues() {
     // Send the request to ProPresenter
-    webSocket.send('{"acn":"fv","uid":"'+stageLayoutUid+'"}');
+    stageWebSocket.send('{"acn":"fv","uid":"'+stageLayoutUid+'"}');
 }
 
 function setFrameValues(obj) {
+    if (!overrideFrameMode && observerMode) {
+        // Get the current slide index
+        getSlideIndex();
+    }
     // Iterate through each frame value
     obj.ary.forEach(
         function (value) {
@@ -174,8 +259,15 @@ function setFrameValues(obj) {
                     }
                     // If this frame is any other frame
                     else {
+                        currentFrame = document.getElementById("txt."+value.acn)
                         // Set the frame value
-                        document.getElementById("txt."+value.acn).innerHTML = value.txt.replace(/[\r\n\x0B\x0C\u0085\u2028\u2029]+/g, "\n");
+                        if (currentFrame.classList.contains("textFrame")) {
+                            currentFrame.innerHTML = value.txt.replace(/[\r\n\x0B\x0C\u0085\u2028\u2029]+/g, "\n");
+                        } 
+                        // If override frame mode is enabled
+                        else if (overrideFrameMode) {
+                            currentFrame.innerHTML = value.txt.replace(/[\r\n\x0B\x0C\u0085\u2028\u2029]+/g, "\n");
+                        }
                     }
                 }
             } else {
@@ -185,11 +277,10 @@ function setFrameValues(obj) {
                     document.getElementById("txt."+value.acn+"."+value.uid).innerHTML = value.txt.replace(/[\r\n\x0B\x0C\u0085\u2028\u2029]+/g, "\n");
                 }
             }
-
         }
     );
     // Fit the values to the frame
-    textFit(document.getElementsByClassName('content-container'), {minFontSize:10, maxFontSize: 1000});
+    textFit(document.getElementsByClassName('content-container scale'), {minFontSize:10, maxFontSize: 1000});
 }
 
 function setFrameValue(obj) {
@@ -224,8 +315,9 @@ function setFrameValue(obj) {
             }
             break;
     }
+
     // Fit the values to the frame
-    textFit(document.getElementsByClassName('content-container'), {minFontSize:10, maxFontSize: 1000});
+    textFit(document.getElementsByClassName('content-container scale'), {minFontSize:10, maxFontSize: 1000});
 }
 
 function displayStageLayout(uid) {
@@ -257,7 +349,7 @@ function displayStageLayout(uid) {
                         // Add the frame to stage data
                         stageData += '<div style="'+getFrameStyle(frame)+'" id="'+getFrameType(frame.typ, frame.uid)+'" class="stage-frame '+bordered+'">'
 				            + '<div id="nme.'+getFrameType(frame.typ, frame.uid)+'" class="title">'+getFrameName(frame.nme, frame.typ)+'</div>'
-            				+ '<div class="content-container"><div id="txt.'+getFrameType(frame.typ, frame.uid)+'" class="content"></div></div>'
+            				+ '<div class="'+getTextScaleUp(frame.textShouldScaleUp)+'"><div id="txt.'+getFrameType(frame.typ, frame.uid)+'" class="'+getFrameMode(frame.mde)+' content"></div></div>'
 	                        + '</div>';
                     }
                 );
@@ -273,10 +365,98 @@ function displayStageLayout(uid) {
     loadingTimeout = setTimeout(function(){$(".loading").fadeOut()}, 2000);
 }
 
+function getSlideIndex() {
+    // If observer websocket is connected
+    if (observerWebSocket.readyState === WebSocket.OPEN) {
+        // Request current presentation slide index
+        observerWebSocket.send('{"action":"presentationSlideIndex"}');
+    }
+}
+
+function getCurrentImages() {
+    // If observer websocket is connected
+    if (observerWebSocket.readyState === WebSocket.OPEN) {
+        // Send current presentation request
+        observerWebSocket.send('{"action":"presentationCurrent", "presentationSlideQuality": 100}');
+    }
+}
+
+function setFrameImages(obj) {
+    if (document.getElementById("txt.cs")?.classList.contains("staticFrame") || document.getElementById("txt.ns")?.classList.contains("staticFrame")) {
+        // Determine if this is a slide index, slide trigger, or presentation request
+        switch(obj.action) {
+            case "presentationSlideIndex":
+                observerSlideIndex = parseInt(obj.slideIndex);
+                break;
+            case "presentationTriggerIndex":
+                observerSlideIndex = obj.slideIndex;
+                break;
+            case "presentationCurrent":
+                observerPresentation = obj;
+                break;
+        }
+        // If slide index and presentation exist
+        if (observerSlideIndex != null && observerPresentation != null) {
+            // Create empty array to hold slide images
+            observerSlides = [];
+            // Iterate through each slide image in each slide group
+            observerPresentation.presentation.presentationSlideGroups.forEach(
+                function (value) {
+                    value.groupSlides.forEach(
+                        function (value) {
+                            // Add slide image to the slide image array
+                            observerSlides.push(value.slideImage);
+                        } 
+                    );
+                }
+            );
+            // If current slide image exists
+            if (observerSlides[observerSlideIndex] != null) {
+                document.getElementById("txt.cs").innerHTML = '<img src="data:image/png;base64,'+observerSlides[observerSlideIndex]+'"/>';
+            } else {
+                document.getElementById("txt.cs").innerHTML = "";
+            }
+            // If next slide image exists
+            if (observerSlides[observerSlideIndex+1] != null) {
+                document.getElementById("txt.ns").innerHTML = '<img src="data:image/png;base64,'+observerSlides[observerSlideIndex+1]+'"/>';
+            } else {
+                document.getElementById("txt.ns").innerHTML = "";
+            }
+        }
+    }
+}
+
+function clearFrameImages() {
+    // If the frame is a static image
+    if (document.getElementById("txt.cs").classList.contains("staticFrame")) {
+        // Clear image from frame
+        document.getElementById("txt.cs").innerHTML = "";
+    }
+    // If the frame is a static image
+    if (document.getElementById("txt.ns").classList.contains("staticFrame")) {
+        // Clear image from frame
+        document.getElementById("txt.ns").innerHTML = "";
+    }
+}
+
 // End Stage Display Functions
 
 
 // Utility Functions
+
+function getFrameMode(frameMode) {
+    switch(frameMode) {
+        case 0:
+            // Frame is Static Image - used with the Observer mode to provide static images due to bugs in the ProPresenter Stage Display protocol
+            return "staticFrame";
+        case 1:
+            // Frame is Text
+            return "textFrame";
+        case 2:
+            // Frame is Live Slide - unused at this stage due to bugs in the ProPresenter Stage Display protocol
+            return "liveFrame";
+    }
+}
 
 function getFrameType(type, uid) {
     switch(type) {
@@ -345,7 +525,7 @@ function getFrameStyle(frame) {
         + 'bottom: '+(ufrList[1]*100)+'%;'
         + 'width: calc('+(ufrList[2]*100)+'% - 2px);'
         + 'height: calc('+(ufrList[3]*100)+'% - 2px);';
-    frameStyle += 'font-size: '+frame.tSz+'px;';
+    frameStyle += 'font-size: calc('+frame.tSz+'px - ('+frame.tSz+'px / 5));';
     var frameColor = frame.tCl.split(" ");
     frameStyle += 'color: rgb('+getRGBValue(frameColor[0])+','+getRGBValue(frameColor[1])+','+getRGBValue(frameColor[2])+');';
     if (frame.tAl == 0) {
@@ -356,6 +536,15 @@ function getFrameStyle(frame) {
         frameStyle += 'text-align: center;';
     }
     return frameStyle;
+}
+
+function getTextScaleUp(shouldScale) {
+    // If the Text should scale up to fix container
+    if (shouldScale) {
+        return "content-container scale";
+    } else {
+        return "content-container";
+    }
 }
 
 function convertTimestamp(timestamp) {
@@ -390,7 +579,6 @@ function convertTimestamp(timestamp) {
             }
             break;
     }
-
     return formattedTime;
 }
 
@@ -427,8 +615,8 @@ function authenticate() {
     // Get the host from the input field
     host = document.getElementById("host").value;
     // Get the host from the input field
-    pass = document.getElementById("password").value;
-    // Try connecting
+    stagePass = document.getElementById("password").value;
+    // Connect to ProPresenter
     connect();
 }
 
@@ -436,7 +624,7 @@ function cancelAuthenticate() {
     // Set retry connection to disabled
     retryConnection = false;
     // End the WebSocket connection
-    webSocket.close();
+    stageWebSocket.close();
     // Remove the loading timeout
     clearTimeout(loadingTimeout);
     // Fade-out the loader and text
@@ -446,10 +634,8 @@ function cancelAuthenticate() {
 }
 
 function initialise() {
-
     // Make images non-draggable
     $("img").attr('draggable', false);
-
 }
 
 // When document is ready
@@ -457,27 +643,36 @@ $(document).ready(function() {
     initialise();
     // If user must authenticate
     if (mustAuthenticate) {
+        // If user can change host
         if (changeHost) {
+            // Show change host container
             $(".host-container").show();
         }
+        // Set HTML authentication elements
         document.getElementById("host").value = host;
-        document.getElementById("password").value = pass;
+        document.getElementById("password").value = stagePass;
+        // Add event listener for enter key in host textbox
         document.getElementById("host").addEventListener('keypress',
             function (e) {
                 if (e.key === 'Enter') {
+                    // Start authentication
                     authenticate();
                 }
             }
         );
+        // Add event listener for enter key in password textbox
         document.getElementById("password").addEventListener('keypress',
             function (e) {
                 if (e.key === 'Enter') {
+                    // Start authentication
                     authenticate();
                 }
             }
         );
+        // Show authenticate segment
         $("#authenticate").show();
     } else {
+        // Connect to ProPresenter
         connect();
     }
 });
