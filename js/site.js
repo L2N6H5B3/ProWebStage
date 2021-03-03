@@ -382,45 +382,47 @@ function getCurrentImages() {
 }
 
 function setFrameImages(obj) {
-    if (document.getElementById("txt.cs")?.classList.contains("staticFrame") || document.getElementById("txt.ns")?.classList.contains("staticFrame")) {
-        // Determine if this is a slide index, slide trigger, or presentation request
-        switch(obj.action) {
-            case "presentationSlideIndex":
-                observerSlideIndex = parseInt(obj.slideIndex);
-                break;
-            case "presentationTriggerIndex":
-                observerSlideIndex = obj.slideIndex;
-                break;
-            case "presentationCurrent":
-                observerPresentation = obj;
-                break;
-        }
-        // If slide index and presentation exist
-        if (observerSlideIndex != null && observerPresentation != null) {
-            // Create empty array to hold slide images
-            observerSlides = [];
-            // Iterate through each slide image in each slide group
-            observerPresentation.presentation.presentationSlideGroups.forEach(
-                function (value) {
-                    value.groupSlides.forEach(
-                        function (value) {
-                            // Add slide image to the slide image array
-                            observerSlides.push(value.slideImage);
-                        } 
-                    );
-                }
-            );
-            // If current slide image exists
-            if (observerSlides[observerSlideIndex] != null) {
-                document.getElementById("txt.cs").innerHTML = '<img src="data:image/png;base64,'+observerSlides[observerSlideIndex]+'"/>';
-            } else {
-                document.getElementById("txt.cs").innerHTML = "";
+    if (document.getElementById("txt.cs") != null || document.getElementById("txt.ns") != null) {
+        if (document.getElementById("txt.cs").classList.contains("staticFrame") || document.getElementById("txt.ns").classList.contains("staticFrame")) {
+            // Determine if this is a slide index, slide trigger, or presentation request
+            switch(obj.action) {
+                case "presentationSlideIndex":
+                    observerSlideIndex = parseInt(obj.slideIndex);
+                    break;
+                case "presentationTriggerIndex":
+                    observerSlideIndex = obj.slideIndex;
+                    break;
+                case "presentationCurrent":
+                    observerPresentation = obj;
+                    break;
             }
-            // If next slide image exists
-            if (observerSlides[observerSlideIndex+1] != null) {
-                document.getElementById("txt.ns").innerHTML = '<img src="data:image/png;base64,'+observerSlides[observerSlideIndex+1]+'"/>';
-            } else {
-                document.getElementById("txt.ns").innerHTML = "";
+            // If slide index and presentation exist
+            if (observerSlideIndex != null && observerPresentation != null) {
+                // Create empty array to hold slide images
+                observerSlides = [];
+                // Iterate through each slide image in each slide group
+                observerPresentation.presentation.presentationSlideGroups.forEach(
+                    function (value) {
+                        value.groupSlides.forEach(
+                            function (value) {
+                                // Add slide image to the slide image array
+                                observerSlides.push(value.slideImage);
+                            } 
+                        );
+                    }
+                );
+                // If current slide image exists
+                if (observerSlides[observerSlideIndex] != null) {
+                    document.getElementById("txt.cs").innerHTML = '<img src="data:image/png;base64,'+observerSlides[observerSlideIndex]+'"/>';
+                } else {
+                    document.getElementById("txt.cs").innerHTML = "";
+                }
+                // If next slide image exists
+                if (observerSlides[observerSlideIndex+1] != null) {
+                    document.getElementById("txt.ns").innerHTML = '<img src="data:image/png;base64,'+observerSlides[observerSlideIndex+1]+'"/>';
+                } else {
+                    document.getElementById("txt.ns").innerHTML = "";
+                }
             }
         }
     }
