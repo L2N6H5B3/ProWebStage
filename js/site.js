@@ -1,18 +1,19 @@
 // Variables
 
 // Connection
-var host = "172.16.101.32";
+var host = "10.1.1.146";
 var port = "50000";
 var pass = "stage";
 
 // Settings
-var stageScreen = 1;
+var stageScreenName = "Foyer Clocks";
 var mustAuthenticate = true;
 var changeHost = true;
 
 // Application
 var authenticated = false;
 var retryConnection = true;
+var stageScreenNo;
 var loadingTimeout;
 var wsUri;
 var stageScreenList;
@@ -22,6 +23,7 @@ var stageLayoutUid;
 var time24Hr;
 var timeFormat;
 var dateFormat;
+var timerFormats = {};
 
 // End Variables
 
@@ -71,6 +73,15 @@ function onMessage(evt) {
         // Get current stage screens
         getStageScreens();
     } else if (obj.acn == "saa") {
+        obj.asgns.forEach(
+            function (value, index) {
+                // If this stage screen name matches
+                if (value.scnnme = stageScreenName) {
+                    // Set stage screen number
+                    stageScreenNo = index + 1;
+                }
+            }
+        );
         // Set current stage screens
         setStageScreens(obj);
     } else if (obj.acn == "asl") {
@@ -124,9 +135,9 @@ function setStageScreens(obj) {
     // Initialise the stage screen list with the array from ProPresenter
     stageScreenList = obj.asgns;
     // Set the current stage screen UID
-    stageScreenUid = stageScreenList[stageScreen-1].scnnme;
+    stageScreenUid = stageScreenList[stageScreenNo-1].scnnme;
     // Set the current stage layout UID
-    stageLayoutUid = stageScreenList[stageScreen-1].lytuid;
+    stageLayoutUid = stageScreenList[stageScreenNo-1].lytuid;
     // Get the stage layouts
     getStageLayouts();
 }
@@ -181,8 +192,37 @@ function setFrameValues(obj) {
             } else {
                 // If the timer frame exists
                 if (document.getElementById(value.acn+"."+value.uid) != null) {
+                    // Get the timer format
+                    timerFormat = timerFormats[value.uid];
+                    // Get the timer value
+                    timerValue = "";
+                    // Split the timer value
+                    timerValueSplit = value.txt.split(":");
+                    // If this timer value contains 3 segments
+                    if (timerValueSplit.length == 3) {
+                        // If the timer hours is enabled
+                        if (timerFormat.tfH == 2) {
+                            timerValue += timerValueSplit[0]+":";
+                        } else if (timerFormat.tfH == 1) {
+                            timerValue += timerValueSplit[0]+":";
+                        }
+                        // If the timer minutes is enabled
+                        if (timerFormat.tfM == 2) {
+                            timerValue += timerValueSplit[1]+":";
+                        } else if (timerFormat.tfM == 1) {
+                            timerValue += timerValueSplit[1]+":";
+                        }
+                        // If the timer seconds is enabled
+                        if (timerFormat.tfS == 2) {
+                            timerValue += timerValueSplit[2];
+                        } else if (timerFormat.tfS == 1) {
+                            timerValue += timerValueSplit[2];
+                        }
+                    } else {
+                        timerValue = value.txt;
+                    }
                     // Set the frame value
-                    document.getElementById("txt."+value.acn+"."+value.uid).innerHTML = value.txt.replace(/[\r\n\x0B\x0C\u0085\u2028\u2029]+/g, "\n");
+                    document.getElementById("txt."+value.acn+"."+value.uid).innerHTML = timerValue;
                 }
             }
 
@@ -219,8 +259,37 @@ function setFrameValue(obj) {
         case "tmr":
             // If the timer frame exists
             if (document.getElementById("txt.tmr."+obj.uid) != null) {
+                // Get the timer format
+                timerFormat = timerFormats[obj.uid];
+                // Get the timer value
+                timerValue = "";
+                // Split the timer value
+                timerValueSplit = obj.txt.split(":");
+                // If this timer value contains 3 segments
+                if (timerValueSplit.length == 3) {
+                    // If the timer hours is enabled
+                    if (timerFormat.tfH == 2) {
+                        timerValue += timerValueSplit[0]+":";
+                    } else if (timerFormat.tfH == 1) {
+                        timerValue += timerValueSplit[0]+":";
+                    }
+                    // If the timer minutes is enabled
+                    if (timerFormat.tfM == 2) {
+                        timerValue += timerValueSplit[1]+":";
+                    } else if (timerFormat.tfM == 1) {
+                        timerValue += timerValueSplit[1]+":";
+                    }
+                    // If the timer seconds is enabled
+                    if (timerFormat.tfS == 2) {
+                        timerValue += timerValueSplit[2];
+                    } else if (timerFormat.tfS == 1) {
+                        timerValue += timerValueSplit[2];
+                    }
+                } else {
+                    timerValue = value.txt;
+                }
                 // Set the frame value
-                document.getElementById("txt.tmr."+obj.uid).innerHTML = obj.txt.replace(/[\r\n\x0B\x0C\u0085\u2028\u2029]+/g, "\n");
+                document.getElementById("txt.tmr."+obj.uid).innerHTML = timerValue;
             }
             break;
     }
@@ -253,6 +322,13 @@ function displayStageLayout(uid) {
                             timeFormat = frame.cfT;
                             // Set date format
                             dateFormat = frame.cfD;
+                        } else if (frame.typ == 7) {
+                            timerFormats[frame.uid] = {
+                                "tfH": frame.tfH,
+                                "tfM": frame.tfM,
+                                "tfS": frame.tfS,
+                                "tfMS": frame.tfMS
+                            };
                         }
                         // Add the frame to stage data
                         stageData += '<div style="'+getFrameStyle(frame)+'" id="'+getFrameType(frame.typ, frame.uid)+'" class="stage-frame '+bordered+'">'
