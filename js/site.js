@@ -1,34 +1,26 @@
 // Variables
 
 // Connection
-var host = "10.1.1.33";
+var host = "localhost";
 var port = "50000";
 var stagePass = "stage";
-var observerPass = "observer";
-
 
 // Settings
 var stageScreen = 1;
 var mustAuthenticate = true;
 var changeHost = true;
-var observerMode = true;
-var overrideFrameMode = false;
+var overrideFrameMode = true;
 
 // Application
-var stageAuthenticated = false;
-var observerAuthenticated = false;
+var authenticated = false;
 var retryConnection = true;
-var stageWebSocket;
-var observerWebSocket;
+var webSocket;
 var loadingTimeout;
 var wsUri;
 var stageScreenList;
 var stageLayoutList;
 var stageScreenUid;
 var stageLayoutUid;
-var observerSlides;
-var observerSlideIndex;
-var observerPresentation;
 var time24Hr;
 var timeFormat;
 var dateFormat;
@@ -49,31 +41,27 @@ function connect() {
     // Set WebSocket uri
     wsUri = "ws://"+host+":"+port;
     // Create WebSocket
-    stageWebSocket = new WebSocket(wsUri+"/stagedisplay");
+    webSocket = new WebSocket(wsUri+"/stagedisplay");
     // Define WebSocket actions
-    stageWebSocket.onopen = function(evt) { onOpen(evt) };
-    stageWebSocket.onclose = function(evt) { onClose(evt) };
-    stageWebSocket.onmessage = function(evt) { onMessage(evt) };
-    stageWebSocket.onerror = function(evt) { onError(evt) };
-    if (observerMode) {
-        // Connect Observer WebSocket
-        observerConnect();
-    }
+    webSocket.onopen = function() { onOpen(); };
+    webSocket.onclose = function() { onClose(); };
+    webSocket.onmessage = function(evt) { onMessage(evt); };
+    webSocket.onerror = function(evt) { onError(evt); };
 }
 
-function onOpen(evt) {
-    if (!stageAuthenticated) {
+function onOpen() {
+    if (!authenticated) {
         // Send authentication data
-        stageWebSocket.send('{"acn":"ath","ptl":610,"pwd":"'+stagePass+'"}');
+        webSocket.send('{"acn":"ath","ptl":610,"pwd":"'+stagePass+'"}');
     }
 }
 
 function onMessage(evt) {
     var obj = JSON.parse(evt.data);
     console.log(obj);
-    if (obj.acn == "ath" && obj.ath && stageAuthenticated == false) {
+    if (obj.acn == "ath" && obj.ath && authenticated == false) {
         // Set as authenticated
-        stageAuthenticated = true;
+        authenticated = true;
         // Set retry connection to enabled
         retryConnection = true;
         // Set loading data status
@@ -101,16 +89,16 @@ function onMessage(evt) {
 
 function onError(evt) {
     // Set authenticated to false
-    stageAuthenticated = false;
+    authenticated = false;
     // Log the error to console
     console.error('Stage Socket encountered error: ', evt.message, 'Closing socket');
     // Close the WebSocket
-    stageWebSocket.close();
+    webSocket.close();
 }
 
-function onClose(evt) {
+function onClose() {
     // Set authenticated to false
-    stageAuthenticated = false;
+    authenticated = false;
     // Remove connected status
     $(".connected").hide();
     // Show disconnected status
@@ -124,81 +112,14 @@ function onClose(evt) {
     }
 }
 
-//  End Web Socket Functions
-
-// Observer WebSocket Functions
-
-function observerConnect() {
-    // Create WebSocket
-    observerWebSocket = new WebSocket(wsUri+"/remote");
-    // Define WebSocket actions
-    observerWebSocket.onopen = function(evt) { observerOnOpen(evt) };
-    observerWebSocket.onclose = function(evt) { observerOnClose(evt) };
-    observerWebSocket.onmessage = function(evt) { observerOnMessage(evt) };
-    observerWebSocket.onerror = function(evt) { observerOnError(evt) };
-}
-
-function observerOnOpen(evt) {
-    if (!observerAuthenticated) {
-        // Send authentication data
-        observerWebSocket.send('{"action":"authenticate","protocol":"701","password":"'+observerPass+'"}');
-    }
-}
-
-function observerOnMessage(evt) {
-    var obj = JSON.parse(evt.data);
-    if (obj.action == "authenticate" && obj.authenticated == "1" && observerAuthenticated == false) {
-        // Set as authenticated
-        observerAuthenticated = true;
-    } else if (obj.action == "presentationCurrent") {
-        // Set frame static images
-        setFrameImages(obj);
-    } else if (obj.action == "presentationSlideIndex") {
-        // Set frame static images
-        setFrameImages(obj);
-        // Get the current presentation images
-        getCurrentImages();
-    } else if (obj.action == "presentationTriggerIndex") {
-        // Set frame static images
-        setFrameImages(obj);
-    } else if (obj.action == "clearAll") {
-        // Clear frame static images
-        clearFrameImages();
-    } else if (obj.action == "clearText") {
-        // Clear frame static images
-        clearFrameImages();
-    }
-}
-
-function observerOnError(evt) {
-    // Set authenticated to false
-    observerAuthenticated = false;
-    // Log the error to console
-    console.error('Observer Socket encountered error: ', evt.message, 'Closing socket');
-    // Close the WebSocket
-    observerWebSocket.close();
-}
-
-function observerOnClose(evt) {
-    // Set observer authenticated to false
-    observerAuthenticated = false;
-    // If retry connection is enabled
-    if (retryConnection) {
-        // Retry connection every second
-        setTimeout(function() {
-            observerConnect();
-        }, 1000);
-    }
-}
-
-// End Observer Web Socket Functions
+// End Web Socket Functions
 
 
 // Stage Display Functions
 
 function getStageScreens() {
     // Send the request to ProPresenter
-    stageWebSocket.send('{"acn":"saa"}');
+    webSocket.send('{"acn":"saa"}');
 }
 
 function setStageScreens(obj) {
@@ -214,26 +135,22 @@ function setStageScreens(obj) {
 
 function getStageLayouts() {
     // Send the request to ProPresenter
-    stageWebSocket.send('{"acn":"asl"}');
+    webSocket.send('{"acn":"asl"}');
 }
 
 function setStageLayouts(obj) {
     // Initialise the stage layout list with the array from ProPresenter
-    stageLayoutList = obj.ary
+    stageLayoutList = obj.ary;
     // Display the stage layout
     displayStageLayout(stageLayoutUid);
 }
 
 function getFrameValues() {
     // Send the request to ProPresenter
-    stageWebSocket.send('{"acn":"fv","uid":"'+stageLayoutUid+'"}');
+    webSocket.send('{"acn":"fv","uid":"'+stageLayoutUid+'"}');
 }
 
 function setFrameValues(obj) {
-    if (!overrideFrameMode && observerMode) {
-        // Get the current slide index
-        getSlideIndex();
-    }
     // Iterate through each frame value
     obj.ary.forEach(
         function (value) {
@@ -259,14 +176,22 @@ function setFrameValues(obj) {
                     }
                     // If this frame is any other frame
                     else {
-                        currentFrame = document.getElementById("txt."+value.acn)
-                        // Set the frame value
-                        if (currentFrame.classList.contains("textFrame")) {
+                        var currentFrame = document.getElementById("txt."+value.acn);
+                        // If override frame mode is enabled
+                        if (overrideFrameMode) {
+                            currentFrame.innerHTML = value.txt.replace(/[\r\n\x0B\x0C\u0085\u2028\u2029]+/g, "\n");
+                        }
+                        // Set the frame with text values
+                        else if (currentFrame.classList.contains("textFrame")) {
                             currentFrame.innerHTML = value.txt.replace(/[\r\n\x0B\x0C\u0085\u2028\u2029]+/g, "\n");
                         } 
-                        // If override frame mode is enabled
-                        else if (overrideFrameMode) {
-                            currentFrame.innerHTML = value.txt.replace(/[\r\n\x0B\x0C\u0085\u2028\u2029]+/g, "\n");
+                        // Set the frame with static images
+                        else if (currentFrame.classList.contains("staticFrame") && value.uid != "00000000-0000-0000-0000-000000000000") {
+                            currentFrame.innerHTML = '<img src="http://'+host+':'+port+'/stage/image/'+value.uid+'" />';
+                        }
+                        // Remove the image when not required
+                        else if (value.uid == "00000000-0000-0000-0000-000000000000") {
+                            currentFrame.innerHTML = "";
                         }
                     }
                 }
@@ -322,7 +247,7 @@ function setFrameValue(obj) {
 
 function displayStageLayout(uid) {
     // Create variable to hold stage data
-    stageData = "";
+    var stageData = "";
     // Iterate through the stage layout list
     stageLayoutList.forEach(
         function (layout) {
@@ -353,7 +278,6 @@ function displayStageLayout(uid) {
 	                        + '</div>';
                     }
                 );
-
             }
         }
     );
@@ -362,83 +286,7 @@ function displayStageLayout(uid) {
     // Get the frame values
     getFrameValues();
     // Fade out loading screen
-    loadingTimeout = setTimeout(function(){$(".loading").fadeOut()}, 2000);
-}
-
-function getSlideIndex() {
-    // If observer websocket is connected
-    if (observerWebSocket.readyState === WebSocket.OPEN) {
-        // Request current presentation slide index
-        observerWebSocket.send('{"action":"presentationSlideIndex"}');
-    }
-}
-
-function getCurrentImages() {
-    // If observer websocket is connected
-    if (observerWebSocket.readyState === WebSocket.OPEN) {
-        // Send current presentation request
-        observerWebSocket.send('{"action":"presentationCurrent", "presentationSlideQuality": 100}');
-    }
-}
-
-function setFrameImages(obj) {
-    if (document.getElementById("txt.cs") != null || document.getElementById("txt.ns") != null) {
-        if (document.getElementById("txt.cs").classList.contains("staticFrame") || document.getElementById("txt.ns").classList.contains("staticFrame")) {
-            // Determine if this is a slide index, slide trigger, or presentation request
-            switch(obj.action) {
-                case "presentationSlideIndex":
-                    observerSlideIndex = parseInt(obj.slideIndex);
-                    break;
-                case "presentationTriggerIndex":
-                    observerSlideIndex = obj.slideIndex;
-                    break;
-                case "presentationCurrent":
-                    observerPresentation = obj;
-                    break;
-            }
-            // If slide index and presentation exist
-            if (observerSlideIndex != null && observerPresentation != null) {
-                // Create empty array to hold slide images
-                observerSlides = [];
-                // Iterate through each slide image in each slide group
-                observerPresentation.presentation.presentationSlideGroups.forEach(
-                    function (value) {
-                        value.groupSlides.forEach(
-                            function (value) {
-                                // Add slide image to the slide image array
-                                observerSlides.push(value.slideImage);
-                            } 
-                        );
-                    }
-                );
-                // If current slide image exists
-                if (observerSlides[observerSlideIndex] != null) {
-                    document.getElementById("txt.cs").innerHTML = '<img src="data:image/png;base64,'+observerSlides[observerSlideIndex]+'"/>';
-                } else {
-                    document.getElementById("txt.cs").innerHTML = "";
-                }
-                // If next slide image exists
-                if (observerSlides[observerSlideIndex+1] != null) {
-                    document.getElementById("txt.ns").innerHTML = '<img src="data:image/png;base64,'+observerSlides[observerSlideIndex+1]+'"/>';
-                } else {
-                    document.getElementById("txt.ns").innerHTML = "";
-                }
-            }
-        }
-    }
-}
-
-function clearFrameImages() {
-    // If the frame is a static image
-    if (document.getElementById("txt.cs").classList.contains("staticFrame")) {
-        // Clear image from frame
-        document.getElementById("txt.cs").innerHTML = "";
-    }
-    // If the frame is a static image
-    if (document.getElementById("txt.ns").classList.contains("staticFrame")) {
-        // Clear image from frame
-        document.getElementById("txt.ns").innerHTML = "";
-    }
+    loadingTimeout = setTimeout(function(){$(".loading").fadeOut();}, 2000);
 }
 
 // End Stage Display Functions
@@ -449,7 +297,7 @@ function clearFrameImages() {
 function getFrameMode(frameMode) {
     switch(frameMode) {
         case 0:
-            // Frame is Static Image - used with the Observer mode to provide static images due to bugs in the ProPresenter Stage Display protocol
+            // Frame is Static Image
             return "staticFrame";
         case 1:
             // Frame is Text
@@ -560,6 +408,8 @@ function convertTimestamp(timestamp) {
     var seconds = "0" + date.getSeconds();
     // Create variable to hold formatted time
     var formattedTime = "";
+    // Create variable to hold converted time
+    var converted;
     // Check the time format
     switch (timeFormat) {
         case 1:
@@ -587,8 +437,6 @@ function convertTimestamp(timestamp) {
 function convertTo12Hr(date) {
     // Hours part from the timestamp
     var hours = date.getHours();
-    // Minutes part from the timestamp
-    var minutes = "0" + date.getMinutes();
     // Set the ampm variable
     var timeType = "AM";
     // If the hours is greater than 11
@@ -626,7 +474,7 @@ function cancelAuthenticate() {
     // Set retry connection to disabled
     retryConnection = false;
     // End the WebSocket connection
-    stageWebSocket.close();
+    webSocket.close();
     // Remove the loading timeout
     clearTimeout(loadingTimeout);
     // Fade-out the loader and text
